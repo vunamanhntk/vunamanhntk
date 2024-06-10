@@ -1,15 +1,117 @@
-# colab
-各种牛逼项目的Colab脚本集合！
+# Content & Contribution
 
-| 名称  |脚本   | 描述 |
-| ---- | ---- | ---- |
-| [ChatTTS](https://github.com/2noise/ChatTTS) | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/TonyColab/blob/master/ChatTTS.ipynb) |专为对话场景设计的文本转语音模型,情感丰富，自然逼真|
-| [Gemma](https://Github.com/google/gemma_pytorch) | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/TonyColab/blob/master/backup/pytorch_gemma.ipynb) |谷歌开源的大语言模型Gemma|
-| [InstantID](https://github.com/InstantID/InstantID) | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/TonyColab/blob/master/InstantID.ipynb) |1张照片，无需训练，秒级生成个人写真|
-| [PhotoMaker](https://github.com/TencentARC/PhotoMaker) | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/TonyColab/blob/master/PhotoMaker.ipynb) | 通过堆叠 ID 嵌入定制逼真的人体照片 |
-| Sambert_UI | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/TonyColab/blob/master/backup/Sambert_UI.ipynb) | 基于Sambert的声音克隆 |
-| MyHeyGen | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/TonyColab/blob/master/myheygen.ipynb) | HeyGen平替，声音克隆，嘴型同步，视频翻译。 |
-| [magic-animate](https://github.com/magic-research/magic-animate) | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](myheygen.ipynb) | 照片跳舞，视频驱动图片。 |
-| [vid2densepose](https://github.com/Flode-Labs/vid2densepose) | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/TonyColab/blob/master/backup/Vid2Densepose.ipynb) | 视频转姿态，配合[magic-animate](https://github.com/magic-research/magic-animate) |
-| Roop | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/roop_colab/blob/main/roop_v1_3.ipynb) | AI换脸，单图视频换脸 |
-| FaceFusion | [![打开](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dream80/roop_colab/blob/main/tonyff_v2.1.2.ipynb) | AI换脸，单图视频换脸WEBUI |
+A place where you can actively contribute to [robinwieruch.de](https://robinwieruch.de). 
+
+* Improve any blog post by editing the file directly in this GitHub repository.
+* Write a new guest blog post by creating a new file in this GitHub repository and follow the "Guidelines for Guest Bloggers" below. Get in touch with me before you start writing an entire article :)
+
+## Guidelines for Guest Bloggers
+
+### Folder/Files
+
+Just create a new folder for your blog post. The folder's name will be the URI for the blog post. In this folder, you can create your markdown file with the text and use images from a folder next to it:
+
+```
+my-blog-post/
+-- index.md
+-- images
+---- my-image.jpg
+```
+
+### Frontmatter
+
+You can leave out all the frontmatter (e.g. title, description) that I use for my blog posts. I can add these later myself.
+
+### Code
+
+Don't use images for code. Instead use a code snippet the following way:
+
+````
+```javascript
+const helloWorld = "Hello World!";
+```
+````
+
+If you want to highlight changes in the code, that's what I usually do in my tutorials, then you can do it by providing the numbers of lines you want to highlight:
+
+````
+```javascript{3}
+const helloWorld = "Hello World!";
+
+console.log(helloWorld);
+```
+````
+
+If you move around from file to file in your tutorial, don't forget to mention the place where you edit/create the next code snippet. Something like:
+
+Now we are going to implement user model in the *src/models/user.js* file:
+
+````
+```javascript
+const user = createModel('user');
+```
+````
+
+### Images
+
+Don't use images for code. Instead use code snippets. If you want to have images in the blog post, add them in at least 1024x768 resolution preferable in .jpg. In the article, reference the image with a proper alt text:
+
+```
+![my image alt text](./images/my-image.jpg)
+```
+
+Image files are placed next to the blog post's markdown file.
+
+### Command Line vs. GUI
+
+There are many tutorials out there that are using lots of images to show a GUI where they do their configuration. I'd like to use as few images as possibles and encourage people to use more often their command line instead. If the a GUI needs to be shown, then an image can be used though.
+
+### Code Formatting
+
+I use [Prettier](https://www.robinwieruch.de/how-to-use-prettier-vscode/) in my projects which helps me to keep all my code snippets equally formatted for my tutorials. That's my default configuration:
+
+```
+{
+  "semi": true,
+  "trailingComma": "all",
+  "singleQuote": true,
+  "printWidth": 70
+}
+```
+
+### Headlines
+
+* h1 headline translates to `# My Headline` in markdown
+* h2 headline translates to `## My Secondary Headline` in markdown
+
+My articles usually follow the same structure with optional `## Secondary Headlines` in between:
+
+```
+Be clear about the motivation of this article ...
+
+# My Headline
+
+# My other Headline
+
+## My Secondary Headline
+
+<Divider />
+
+Outro
+```
+
+### Links
+
+Links can be used the following way:
+
+```
+[my article name](url)
+```
+
+### Italics
+
+I usually use italics with `*` for folders and files like `src/models/user.index/js` or `src/`.
+
+### Bold
+
+I usually use bold with `**` to point out the importance of something or to highlight a specific topic in a paragraph.
