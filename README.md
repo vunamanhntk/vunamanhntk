@@ -1,117 +1,105 @@
-# Content & Contribution
+# News
 
-A place where you can actively contribute to [robinwieruch.de](https://robinwieruch.de). 
+https://docs.robinhood.com/crypto/trading/
 
-* Improve any blog post by editing the file directly in this GitHub repository.
-* Write a new guest blog post by creating a new file in this GitHub repository and follow the "Guidelines for Guest Bloggers" below. Get in touch with me before you start writing an entire article :)
+I'm feeling in a mood to work on this again. I'll be trying to fill any blanks found in Robinhood's official docs. First, I'll be talking to myself over in https://github.com/sanko/Robinhood/discussions while I work through v1 of their crypto API and later documenting rough edges in these docs.
 
-## Guidelines for Guest Bloggers
+-------
 
-### Folder/Files
+# Unofficial Documentation of Robinhood Trade's Private API
 
-Just create a new folder for your blog post. The folder's name will be the URI for the blog post. In this folder, you can create your markdown file with the text and use images from a folder next to it:
+Table of Contents:
 
-```
-my-blog-post/
--- index.md
--- images
----- my-image.jpg
-```
+- [Table of Contents](#table-of-contents)
+- [Introduction](#introduction)
+	- [Development](#development)
+- [API Security](#api-security)
+- [API Error Reporting](#api-error-reporting)
+- [Pagination](#pagination)
+	- [Semi-Pagination](#semi-pagination)
 
-### Frontmatter
+## See also
 
-You can leave out all the frontmatter (e.g. title, description) that I use for my blog posts. I can add these later myself.
+- [Authentication.md](Authentication.md) for methods related to user authentication, password recovery, etc.
+- [Banking.md](Banking.md) for bank accounts & ACH transfers methods
+- [Order.md](Order.md) for order-related functions (placing, cancelling, listing previous orders, etc.)
+- [Options.md](Options.md) for options related endpoints
+- [Quote.md](Quote.md) for stock quotes
+- [Fundamentals.md](Fundamentals.md) for basic, fundamental data
+- [Instrument.md](Instrument.md) for internal reference to financial instruments
+- [Watchlist.md](Watchlist.md) for watchlists management
+- [Account.md](Account.md) talks about gathering and modifying user and account information
+- [Settings.md](Settings.md) covers notifications and other settings
+- [Markets.md](Markets.md) describes the API for getting basic info about specific exchanges themselves
+- [Referrals.md](Referrals.md) is all about account referrals
+- [Statistics.md](Statistics.md) exposes the new social/statistical endpoints
+- [Tags.md](Tags.md) exposes the new categorizing endpoints
 
-### Code
+Things I have yet to organize are in [Unsorted.md](Unsorted.md)
 
-Don't use images for code. Instead use a code snippet the following way:
+# Introduction
 
-````
-```javascript
-const helloWorld = "Hello World!";
-```
-````
+[Robinhood](http://robinhood.com/) is a commission-free, online securities brokerage. As you would expect, being an online service means everything is handled through a request that is made to a specific URL.
 
-If you want to highlight changes in the code, that's what I usually do in my tutorials, then you can do it by providing the numbers of lines you want to highlight:
+# API Security
 
-````
-```javascript{3}
-const helloWorld = "Hello World!";
+The HTTPS protocol is used to access the Robinhood API. Transactions require security because most calls transmit actual account informaion. SSL Pinning is used in the official Android and iOS apps to prevent MITM attacks; you would be wise to do the same at the very least.
 
-console.log(helloWorld);
-```
-````
+Calls to API endpoints make use of two different levels of authentication:
 
-If you move around from file to file in your tutorial, don't forget to mention the place where you edit/create the next code snippet. Something like:
+1. **None**: No authentication. Anyone can query the method.
+2. **Token**: Requires an authorization token generated with a call to [log in](Authentication.md#logging-in).
 
-Now we are going to implement user model in the *src/models/user.js* file:
+Calls which require no authentication are generally informational ([quote gathering](Quote.md#quote-methods), [securities lookup](#instrument-methods), etc.).
 
-````
-```javascript
-const user = createModel('user');
-```
-````
+Authorized calls require an `Authorization` HTTP Header with the authentication type set as `Token` (Example: `Authorization: Token 40charauthozationtokenherexxxxxxxxxxxxxx`).
 
-### Images
+# API Error Reporting
 
-Don't use images for code. Instead use code snippets. If you want to have images in the blog post, add them in at least 1024x768 resolution preferable in .jpg. In the article, reference the image with a proper alt text:
+The API reports incorrect data or improper use with HTTP status codes and JSON objects returned as body content. Some that I've run into include:
 
-```
-![my image alt text](./images/my-image.jpg)
-```
+| HTTP Status | Key                | Value | What I Did Wrong |
+|-------------|--------------------|-------|------------------|
+| 400         | `non_field_errors` | `["Unable to log in with provided credentials."]` | Attempted to [log in](#logging-in) with incorrect username/password |
+| 400         | `password`         | `["This field may not be blank."]`                | Attempted to [log in](#logging-in) without a password |
+| 401         | `detail`           | `["Invalid token."]`                              | Attempted to use cached token after [logging out](#logging-out) |
+| 400         | `password`           | `["This password is too short. It must contain at least 10 characters.", "This password is too common."]`                                                       | Attempted to [change my password](#password-reset) to `password` |
 
-Image files are placed next to the blog post's markdown file.
+...you get the idea. Letting you know exactly what went wrong makes the API almost self-documenting so thanks Robinhood.
 
-### Command Line vs. GUI
+# Pagination
 
-There are many tutorials out there that are using lots of images to show a GUI where they do their configuration. I'd like to use as few images as possibles and encourage people to use more often their command line instead. If the a GUI needs to be shown, then an image can be used though.
+Some data is returned from the Robinhood API as paginated data with `next` and `previous` cursors already in URL form.
 
-### Code Formatting
-
-I use [Prettier](https://www.robinwieruch.de/how-to-use-prettier-vscode/) in my projects which helps me to keep all my code snippets equally formatted for my tutorials. That's my default configuration:
+If your call returns paginated data, it will look like this call to `https://api.robinhood.com/instruments/`:
 
 ```
 {
-  "semi": true,
-  "trailingComma": "all",
-  "singleQuote": true,
-  "printWidth": 70
+    "previous": null,
+    "results": [{
+        "splits" : "https://api.robinhood.com/instruments/42e07e3a-ca7a-4abc-8c23-de49cb657c62/splits/",
+        "margin_initial_ratio" : "1.0000",
+        "url" : "https://api.robinhood.com/instruments/42e07e3a-ca7a-4abc-8c23-de49cb657c62/",
+        "quote" : "https://api.robinhood.com/quotes/SBPH/",
+        "symbol" : "SBPH",
+        "bloomberg_unique" : "EQ0000000028928752",
+        "list_date" : null,
+        "fundamentals" : "https://api.robinhood.com/fundamentals/SBPH/",
+        "state" : "active",
+        "tradeable" : true,
+        "maintenance_ratio" : "1.0000",
+        "id" : "42e07e3a-ca7a-4abc-8c23-de49cb657c62",
+        "market" : "https://api.robinhood.com/markets/XNAS/",
+        "name" : "Spring Bank Pharmaceuticals, Inc. Common Stock"
+    },
+        ...
+    ],
+    "next": "https://api.robinhood.com/instruments/?cursor=cD04NjUz"
 }
 ```
 
-### Headlines
+To get the next page of results, just use the `next` URL.
 
-* h1 headline translates to `# My Headline` in markdown
-* h2 headline translates to `## My Secondary Headline` in markdown
+## Semi-Pagination
 
-My articles usually follow the same structure with optional `## Secondary Headlines` in between:
-
-```
-Be clear about the motivation of this article ...
-
-# My Headline
-
-# My other Headline
-
-## My Secondary Headline
-
-<Divider />
-
-Outro
-```
-
-### Links
-
-Links can be used the following way:
-
-```
-[my article name](url)
-```
-
-### Italics
-
-I usually use italics with `*` for folders and files like `src/models/user.index/js` or `src/`.
-
-### Bold
-
-I usually use bold with `**` to point out the importance of something or to highlight a specific topic in a paragraph.
+Some data is returned as a list of `results` as if they were paginate but the API doesn't supply us with `previous` or `next` keys.
