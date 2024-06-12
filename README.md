@@ -1,105 +1,114 @@
-# News
+Liner
+=====
 
-https://docs.robinhood.com/crypto/trading/
+Liner is a command line editor with history. It was inspired by linenoise;
+everything Unix-like is a VT100 (or is trying very hard to be). If your
+terminal is not pretending to be a VT100, change it. Liner also support
+Windows.
 
-I'm feeling in a mood to work on this again. I'll be trying to fill any blanks found in Robinhood's official docs. First, I'll be talking to myself over in https://github.com/sanko/Robinhood/discussions while I work through v1 of their crypto API and later documenting rough edges in these docs.
+Liner is intended for use by cross-platform applications. Therefore, the
+decision was made to write it in pure Go, avoiding cgo, for ease of cross
+compilation. Furthermore, features only supported on some platforms have
+been intentionally omitted. For example, Ctrl-Z is "suspend" on Unix, but
+"EOF" on Windows. In the interest of making an application behave the same
+way on every supported platform, Ctrl-Z is ignored by Liner.
 
--------
+Liner is released under the X11 license (which is similar to the new BSD
+license).
 
-# Unofficial Documentation of Robinhood Trade's Private API
+Line Editing
+------------
 
-Table of Contents:
+The following line editing commands are supported on platforms and terminals
+that Liner supports:
 
-- [Table of Contents](#table-of-contents)
-- [Introduction](#introduction)
-	- [Development](#development)
-- [API Security](#api-security)
-- [API Error Reporting](#api-error-reporting)
-- [Pagination](#pagination)
-	- [Semi-Pagination](#semi-pagination)
+Keystroke    | Action
+---------    | ------
+Ctrl-A, Home | Move cursor to beginning of line
+Ctrl-E, End  | Move cursor to end of line
+Ctrl-B, Left | Move cursor one character left
+Ctrl-F, Right| Move cursor one character right
+Ctrl-Left, Alt-B    | Move cursor to previous word
+Ctrl-Right, Alt-F   | Move cursor to next word
+Ctrl-D, Del  | (if line is *not* empty) Delete character under cursor
+Ctrl-D       | (if line *is* empty) End of File - usually quits application
+Ctrl-C       | Reset input (create new empty prompt)
+Ctrl-L       | Clear screen (line is unmodified)
+Ctrl-T       | Transpose previous character with current character
+Ctrl-H, BackSpace | Delete character before cursor
+Ctrl-W, Alt-BackSpace | Delete word leading up to cursor
+Alt-D        | Delete word following cursor
+Ctrl-K       | Delete from cursor to end of line
+Ctrl-U       | Delete from start of line to cursor
+Ctrl-P, Up   | Previous match from history
+Ctrl-N, Down | Next match from history
+Ctrl-R       | Reverse Search history (Ctrl-S forward, Ctrl-G cancel)
+Ctrl-Y       | Paste from Yank buffer (Alt-Y to paste next yank instead)
+Tab          | Next completion
+Shift-Tab    | (after Tab) Previous completion
 
-## See also
+Note that "Previous" and "Next match from history" will retain the part of
+the line that the user has already typed, similar to zsh's
+"up-line-or-beginning-search" (which is the default on some systems) or
+bash's "history-search-backward" (which is my preferred behaviour, but does
+not appear to be the default `Up` keybinding on any system).
 
-- [Authentication.md](Authentication.md) for methods related to user authentication, password recovery, etc.
-- [Banking.md](Banking.md) for bank accounts & ACH transfers methods
-- [Order.md](Order.md) for order-related functions (placing, cancelling, listing previous orders, etc.)
-- [Options.md](Options.md) for options related endpoints
-- [Quote.md](Quote.md) for stock quotes
-- [Fundamentals.md](Fundamentals.md) for basic, fundamental data
-- [Instrument.md](Instrument.md) for internal reference to financial instruments
-- [Watchlist.md](Watchlist.md) for watchlists management
-- [Account.md](Account.md) talks about gathering and modifying user and account information
-- [Settings.md](Settings.md) covers notifications and other settings
-- [Markets.md](Markets.md) describes the API for getting basic info about specific exchanges themselves
-- [Referrals.md](Referrals.md) is all about account referrals
-- [Statistics.md](Statistics.md) exposes the new social/statistical endpoints
-- [Tags.md](Tags.md) exposes the new categorizing endpoints
+Getting started
+-----------------
 
-Things I have yet to organize are in [Unsorted.md](Unsorted.md)
+```go
+package main
 
-# Introduction
+import (
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
 
-[Robinhood](http://robinhood.com/) is a commission-free, online securities brokerage. As you would expect, being an online service means everything is handled through a request that is made to a specific URL.
+	"github.com/peterh/liner"
+)
 
-# API Security
+var (
+	history_fn = filepath.Join(os.TempDir(), ".liner_example_history")
+	names      = []string{"john", "james", "mary", "nancy"}
+)
 
-The HTTPS protocol is used to access the Robinhood API. Transactions require security because most calls transmit actual account informaion. SSL Pinning is used in the official Android and iOS apps to prevent MITM attacks; you would be wise to do the same at the very least.
+func main() {
+	line := liner.NewLiner()
+	defer line.Close()
 
-Calls to API endpoints make use of two different levels of authentication:
+	line.SetCtrlCAborts(true)
 
-1. **None**: No authentication. Anyone can query the method.
-2. **Token**: Requires an authorization token generated with a call to [log in](Authentication.md#logging-in).
+	line.SetCompleter(func(line string) (c []string) {
+		for _, n := range names {
+			if strings.HasPrefix(n, strings.ToLower(line)) {
+				c = append(c, n)
+			}
+		}
+		return
+	})
 
-Calls which require no authentication are generally informational ([quote gathering](Quote.md#quote-methods), [securities lookup](#instrument-methods), etc.).
+	if f, err := os.Open(history_fn); err == nil {
+		line.ReadHistory(f)
+		f.Close()
+	}
 
-Authorized calls require an `Authorization` HTTP Header with the authentication type set as `Token` (Example: `Authorization: Token 40charauthozationtokenherexxxxxxxxxxxxxx`).
+	if name, err := line.Prompt("What is your name? "); err == nil {
+		log.Print("Got: ", name)
+		line.AppendHistory(name)
+	} else if err == liner.ErrPromptAborted {
+		log.Print("Aborted")
+	} else {
+		log.Print("Error reading line: ", err)
+	}
 
-# API Error Reporting
-
-The API reports incorrect data or improper use with HTTP status codes and JSON objects returned as body content. Some that I've run into include:
-
-| HTTP Status | Key                | Value | What I Did Wrong |
-|-------------|--------------------|-------|------------------|
-| 400         | `non_field_errors` | `["Unable to log in with provided credentials."]` | Attempted to [log in](#logging-in) with incorrect username/password |
-| 400         | `password`         | `["This field may not be blank."]`                | Attempted to [log in](#logging-in) without a password |
-| 401         | `detail`           | `["Invalid token."]`                              | Attempted to use cached token after [logging out](#logging-out) |
-| 400         | `password`           | `["This password is too short. It must contain at least 10 characters.", "This password is too common."]`                                                       | Attempted to [change my password](#password-reset) to `password` |
-
-...you get the idea. Letting you know exactly what went wrong makes the API almost self-documenting so thanks Robinhood.
-
-# Pagination
-
-Some data is returned from the Robinhood API as paginated data with `next` and `previous` cursors already in URL form.
-
-If your call returns paginated data, it will look like this call to `https://api.robinhood.com/instruments/`:
-
-```
-{
-    "previous": null,
-    "results": [{
-        "splits" : "https://api.robinhood.com/instruments/42e07e3a-ca7a-4abc-8c23-de49cb657c62/splits/",
-        "margin_initial_ratio" : "1.0000",
-        "url" : "https://api.robinhood.com/instruments/42e07e3a-ca7a-4abc-8c23-de49cb657c62/",
-        "quote" : "https://api.robinhood.com/quotes/SBPH/",
-        "symbol" : "SBPH",
-        "bloomberg_unique" : "EQ0000000028928752",
-        "list_date" : null,
-        "fundamentals" : "https://api.robinhood.com/fundamentals/SBPH/",
-        "state" : "active",
-        "tradeable" : true,
-        "maintenance_ratio" : "1.0000",
-        "id" : "42e07e3a-ca7a-4abc-8c23-de49cb657c62",
-        "market" : "https://api.robinhood.com/markets/XNAS/",
-        "name" : "Spring Bank Pharmaceuticals, Inc. Common Stock"
-    },
-        ...
-    ],
-    "next": "https://api.robinhood.com/instruments/?cursor=cD04NjUz"
+	if f, err := os.Create(history_fn); err != nil {
+		log.Print("Error writing history file: ", err)
+	} else {
+		line.WriteHistory(f)
+		f.Close()
+	}
 }
 ```
 
-To get the next page of results, just use the `next` URL.
-
-## Semi-Pagination
-
-Some data is returned as a list of `results` as if they were paginate but the API doesn't supply us with `previous` or `next` keys.
+For documentation, see http://godoc.org/github.com/peterh/liner
