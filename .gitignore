@@ -1,21 +1,52 @@
-build/*
-build-*
-clang/*
-clang-*
-.vscode/*.db
-.vscode/settings.json
-.vscode/launch.json
-third_party
-genfiles/*
-*.sublime-*
-*.orig
-.tags
-!third_party/include/*
-*.pyc
-/CMakeLists.txt.user
-_deps
-releases
-.DS_Store
-.idea/*
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
 
-.secrets
+# Precompiled Headers
+*.gch
+*.pch
+*.lnk
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.miss
+*.exe
+*.out
+*.app
+*~
+*.pyc
+*.mpi
+*.exe
+*tmp*
+*.rabit
+*.mock
+recommonmark
+recom
+_*
+
+#mpi lib
+mpich/
+mpich-3.2/
+
+# Jetbrain
+.idea
+cmake-build-debug/
+.vscode/
+
+# cmake
+build/
+compile_commands.json

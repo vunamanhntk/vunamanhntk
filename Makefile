@@ -1,52 +1,104 @@
-BUILD_ARCH := $(shell uname -m)
-RELEASE_NAME := "dragonfly-${BUILD_ARCH}"
-HELIO_RELEASE_FLAGS = -DHELIO_RELEASE_FLAGS="-g"
-HELIO_USE_STATIC_LIBS = ON
-HELIO_OPENSSL_USE_STATIC_LIBS = ON
-HELIO_ENABLE_GIT_VERSION = ON
-HELIO_WITH_UNWIND = OFF
-RELEASE_DIR=build-release
+OS := $(shell uname)
 
-# Some distributions (old fedora) have incorrect dependencies for crypto
-# so we add -lz for them.
-LINKER_FLAGS=-lz
+RABIT_BUILD_DMLC = 0
 
-# equivalent to: if $(uname_m) == x86_64 || $(uname_m) == amd64
-ifneq (, $(filter $(BUILD_ARCH),x86_64 amd64))
-HELIO_MARCH_OPT := -march=core2 -msse4.1 -mpopcnt -mtune=skylake
+export WARNFLAGS= -Wall -Wextra -Wno-unused-parameter -Wno-unknown-pragmas -std=c++11
+export CFLAGS = -O3 $(WARNFLAGS)
+export LDFLAGS =-Llib
+
+#download mpi
+#echo $(shell scripts/mpi.sh)
+
+MPICXX=./mpich/bin/mpicxx
+
+export CXX = g++
+
+
+#----------------------------
+# Settings for power and arm arch
+#----------------------------
+ARCH := $(shell uname -a)
+ifneq (,$(filter $(ARCH), armv6l armv7l powerpc64le ppc64le aarch64))
+	CFLAGS += -march=native
+else
+	CFLAGS += -msse2
 endif
 
-# For release builds we link statically libstdc++ and libgcc. Currently,
-# all the release builds are performed by gcc.
-LINKER_FLAGS += -static-libstdc++ -static-libgcc
+ifndef WITH_FPIC
+	WITH_FPIC = 1
+endif
+ifeq ($(WITH_FPIC), 1)
+	CFLAGS += -fPIC
+endif
 
-HELIO_FLAGS = -DHELIO_RELEASE_FLAGS="-g" \
-			  -DCMAKE_EXE_LINKER_FLAGS="$(LINKER_FLAGS)" \
-              -DBoost_USE_STATIC_LIBS=$(HELIO_USE_STATIC_LIBS) \
-              -DOPENSSL_USE_STATIC_LIBS=$(HELIO_OPENSSL_USE_STATIC_LIBS) \
-              -DENABLE_GIT_VERSION=$(HELIO_ENABLE_GIT_VERSION) \
-              -DWITH_UNWIND=$(HELIO_WITH_UNWIND) -DMARCH_OPT="$(HELIO_MARCH_OPT)"
+ifndef LINT_LANG
+	LINT_LANG="all"
+endif
 
-.PHONY: default
+ifeq ($(RABIT_BUILD_DMLC),1)
+    DMLC=dmlc-core
+else
+    DMLC=../dmlc-core
+endif
 
-configure:
-	cmake -L -B $(RELEASE_DIR) -DCMAKE_BUILD_TYPE=Release -GNinja $(HELIO_FLAGS)
+CFLAGS += -I $(DMLC)/include -I include/
 
-build:
-	cd $(RELEASE_DIR); \
-	ninja dragonfly && ldd dragonfly
+# build path
+BPATH=.
+# objectives that makes up rabit library
+MPIOBJ= $(BPATH)/engine_mpi.o
+OBJ= $(BPATH)/allreduce_base.o $(BPATH)/allreduce_robust.o $(BPATH)/engine.o $(BPATH)/engine_empty.o $(BPATH)/engine_mock.o\
+	$(BPATH)/c_api.o $(BPATH)/engine_base.o
+SLIB= lib/librabit.so lib/librabit_mock.so lib/librabit_base.so
+ALIB= lib/librabit.a lib/librabit_empty.a lib/librabit_mock.a lib/librabit_base.a
+MPISLIB= lib/librabit_mpi.so
+MPIALIB= lib/librabit_mpi.a
+HEADERS=src/*.h include/rabit/*.h include/rabit/internal/*.h
 
-package:
-	cd $(RELEASE_DIR); \
-	tar cvfz $(RELEASE_NAME)-dbgsym.tar.gz dragonfly ../LICENSE.md; \
-	objcopy \
-		--remove-section=".debug_*" \
-		--remove-section="!.debug_line" \
-		--compress-debug-sections \
-		dragonfly \
-		$(RELEASE_NAME); \
-	tar cvfz $(RELEASE_NAME).tar.gz $(RELEASE_NAME) ../LICENSE.md
+.PHONY: clean all install mpi python lint doc doxygen
 
-release: configure build
+all: lib/librabit.a lib/librabit_mock.a  lib/librabit.so lib/librabit_base.a lib/librabit_mock.so
+mpi: lib/librabit_mpi.a lib/librabit_mpi.so
 
-default: release
+$(BPATH)/allreduce_base.o: src/allreduce_base.cc $(HEADERS)
+$(BPATH)/engine.o: src/engine.cc $(HEADERS)
+$(BPATH)/allreduce_robust.o: src/allreduce_robust.cc $(HEADERS)
+$(BPATH)/engine_mpi.o: src/engine_mpi.cc $(HEADERS)
+$(BPATH)/engine_empty.o: src/engine_empty.cc $(HEADERS)
+$(BPATH)/engine_mock.o: src/engine_mock.cc $(HEADERS)
+$(BPATH)/engine_base.o: src/engine_base.cc $(HEADERS)
+$(BPATH)/c_api.o: src/c_api.cc $(HEADERS)
+
+lib/librabit.a lib/librabit.so: $(BPATH)/allreduce_base.o $(BPATH)/allreduce_robust.o $(BPATH)/engine.o $(BPATH)/c_api.o
+lib/librabit_base.a lib/librabit_base.so: $(BPATH)/allreduce_base.o $(BPATH)/engine_base.o $(BPATH)/c_api.o
+lib/librabit_mock.a lib/librabit_mock.so: $(BPATH)/allreduce_base.o $(BPATH)/allreduce_robust.o $(BPATH)/engine_mock.o $(BPATH)/c_api.o
+lib/librabit_empty.a: $(BPATH)/engine_empty.o $(BPATH)/c_api.o
+lib/librabit_mpi.a lib/librabit_mpi.so: $(MPIOBJ)
+
+$(OBJ) :
+	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c %.cc, $^) )
+
+$(ALIB):
+	ar cr $@ $+
+
+$(SLIB) :
+	$(CXX) $(CFLAGS) -shared -o $@ $(filter %.cpp %.o %.c %.cc %.a, $^) $(LDFLAGS)
+
+$(MPIOBJ) :
+	$(MPICXX) -c $(CFLAGS) -I./mpich/include -o $@ $(firstword $(filter %.cpp %.c %.cc, $^) )
+
+$(MPIALIB):
+	ar cr $@ $+
+
+$(MPISLIB) :
+	$(MPICXX) $(CFLAGS) -I./mpich/include -shared -o $@ $(filter %.cpp %.o %.c %.cc %.a, $^) \
+	$(LDFLAGS) -L./mpich/lib -Wl,-rpath,./mpich/lib -lmpi
+
+lint:
+	$(DMLC)/scripts/lint.py rabit $(LINT_LANG) src include
+
+doc doxygen:
+	cd include; doxygen ../doc/Doxyfile; cd -
+
+clean:
+	$(RM)  $(OBJ) $(MPIOBJ) $(ALIB) $(MPIALIB) $(SLIB) *~ src/*~ include/*~ include/*/*~
