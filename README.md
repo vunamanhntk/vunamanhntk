@@ -1,14 +1,21 @@
-# Anime-Girls-Holding-Programming-Books
-Anime Girls Holding Programming Books
+=======
+# AngelSword
+AngelSword是由python3编写的简易的cms漏洞检测框架。旨在帮助有安全经验的安全工程师对已知的应用快速发现漏洞。
 
-# Contribution Guidelines
 
-* __NSFW images aren't allowed due to [Github Site Policy](https://docs.github.com/en/site-policy);__
 
-* Pictures can't be related to cryptocurrency or its technologies;
-* Images must have descriptive file names in the following format (The file doesn't have to be "png" format, this is just an example):
-    Name_Name_Book_Book.png
+# 使用用法
+![image](./images/angelsword.png)
 
-* Add your images to the folder that best describes the subject matter of the book that the girl is holding. If no existing folder applies, create a new one. The simpler the name, the better;
 
-* All characters must be female presenting (either canonically female or look/act like girls).
+
+# 平台
+MAC Linux
+
+
+
+# 需要用到的模块
+requirements.txt
+
+# 说明
+停止维护
